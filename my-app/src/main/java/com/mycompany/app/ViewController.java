@@ -10,7 +10,7 @@ public class ViewController {
     }
 
     @RequestMapping("/display")
-    public String index() {
+    public String display() {
         return "This is the display page!";
     }
 
