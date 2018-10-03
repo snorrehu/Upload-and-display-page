@@ -1,2 +1,7 @@
+com/mycompany/app/storage/StorageService.class
+com/mycompany/app/storage/StorageProperties.class
 com/mycompany/app/App.class
-com/mycompany/app/HelloController.class
+com/mycompany/app/storage/StorageFileNotFoundException.class
+com/mycompany/app/storage/StorageException.class
+com/mycompany/app/FileUploadController.class
+com/mycompany/app/storage/FileSystemStorageService.class

@@ -22,7 +22,7 @@
     <plugins>
       <plugin>
       	<configuration>
-  			<appName>sleepy-mesa-33652</appName>
+  			<appName>polar-sands-93684</appName>
   			<processTypes>
      			<web>java $JAVA_OPTS -cp target/classes:target/dependency/* com.mycompany.app.App</web>
   			</processTypes>
