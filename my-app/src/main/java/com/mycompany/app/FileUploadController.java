@@ -2,12 +2,18 @@ package com.mycompany.app;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.FileInputStream;
 
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -49,22 +55,59 @@ public class FileUploadController {
 
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+    public ResponseEntity<?> serveFile(@PathVariable String filename) {
 
         Resource file = storageService.loadAsResource(filename);
 
-        
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).body(file);
+        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(file);
+		
+			InputStream sFile = null;
+				try {sFile = new FileInputStream(file.getFile());
+				} catch (Exception e){
+				}
 
-        /*return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION,
-                "inline; filename=\"" + file.getFilename() + "\"").body(file);*/
+				BufferedReader br = null;
+    			try {br = new BufferedReader(new InputStreamReader(sFile)); }
+    				catch(Exception e) {
+    				}
+    				StringBuilder resultStringBuilder = new StringBuilder();
+        			String line;
+	        		try { while ((line = br.readLine()) != null) {
+	            		resultStringBuilder.append(line).append("\n");
+	        			}
+	        		}
+	        		catch(Exception e) {
+	        		}
+        		
+    	
+  		String fileContent = resultStringBuilder.toString();
+  		System.out.print(String.valueOf(mediaType.get()));
+
+		if(String.valueOf(mediaType.get()).equals("text/x-java-source")){
+			System.out.print("JAVA FILE!");
+			return ResponseEntity.ok().body("<h1>"+filename+"</h1><br><code>"+fileContent+"</code>");
+		} else {
+			System.out.print("OTHER FILETYPE!");
+			return ResponseEntity.ok().contentType(mediaType.get()).body(file);
+		}
+
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file,
-            RedirectAttributes redirectAttributes) {
+    public String handleFileUpload(@RequestParam("file") MultipartFile file/*,
+            RedirectAttributes redirectAttributes*/) {
 
         storageService.store(file);
+
+        /*Resource resfile = storageService.loadAsResource(file.getOriginalFilename());
+
+        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(resfile);
+		
+		System.out.print("MEDIATYPE: "+mediaType.get());
+
+		if(mediaType.isPresent()) {
+
+		}*/
 	
         /*redirectAttributes.addFlashAttribute("message",
                 "You successfully uploaded " + file.getOriginalFilename() + "!");*/
