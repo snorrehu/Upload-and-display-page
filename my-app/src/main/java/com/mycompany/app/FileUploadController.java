@@ -3,6 +3,9 @@ package com.mycompany.app;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FileInputStream;
+import javax.naming.directory.*;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 
 import java.nio.file.*;
 import java.io.IOException;
@@ -11,7 +14,8 @@ import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.util.stream.Collectors;
 import java.util.Optional;
-
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -44,22 +48,14 @@ public class FileUploadController {
     }
 	
     @GetMapping("/")
-    public String listUploadedFiles(/*Model model*/) throws IOException {
-
-       /* model.addAttribute("files", storageService.loadAll().map(
-                path -> MvcUriComponentsBuilder.fromMethodName(FileUploadController.class,
-                        "serveFile", path.getFileName().toString()).build().toString())
-                .collect(Collectors.toList()));*/
-	
+    public String listUploadedFiles() throws IOException {
         return "uploadForm";
     }
 
     @GetMapping("/{filename:.+}")
     @ResponseBody
     public ResponseEntity<?> serveFile(@PathVariable String filename) {
-
         Resource file = storageService.loadAsResource(filename);
-
         Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(file);
 		
 			InputStream sFile = null;
@@ -80,64 +76,89 @@ public class FileUploadController {
 	        		catch(Exception e) {
 	        		}
         		
-    	
   		String fileContent = resultStringBuilder.toString();
-  		
   		String header = "<h1>"+filename+"</h1>";
   		String extension = filename.substring(filename.lastIndexOf("."));
-  		System.out.print(extension);
 
 		if(extension.equals(".java") || extension.equals(".cs") || extension.equals(".py") ){
-			System.out.print("CODE FILE!");
 			return ResponseEntity.ok().body(header + "<code>"+fileContent+"</code>");
 		} else if (extension.equals(".txt")){
-			System.out.print("TXT FILE!");
 			return ResponseEntity.ok().body(header + "<p>"+fileContent+"</p>");
-			
 		} else if (extension.equals(".pdf")) {
-
-
-			
-			String filePath = "\""+filename+"\"";
-			//String filePath = "\""+Paths.get(System.getProperty("user.dir")+"/upload-dir/"+filename)+"\"";
-	
-			//return ResponseEntity.ok().contentType(mediaType.get()).body(file);
-			try {return ResponseEntity.ok().body(header + 
-				"<object data="+filePath+" type=\"application/pdf\" width=\"100%\" height=\"800px\"> " +
-				"<iframe src="+filePath+" style=\"border: none;\" width=\"100%\" height=\"800px\"> " +
-				//"This browser does not support PDFs. Please download the PDF to view it: <a href=""\""+file.getFile()+"\">Download PDF</a> " +
-				"</iframe> " + 
-				"</object> "
-		);} 
+			String filePath = "/pdf/"+filename;
+			return ResponseEntity.ok().body(header + 
+					"<object data="+filePath+" type=\"application/pdf\" width=\"100%\" height=\"800px\"> " +
+					"<iframe src="+filePath+" style=\"border: none;\" width=\"100%\" height=\"800px\"> " +
+					"This browser does not support PDFs. Please download the PDF to view it: <a href="+filePath+">Download PDF</a> " +
+					"</iframe> " + 
+					"</object> "
+		);} else if (extension.equals(".png") || extension.equals(".jpeg")) {
+			String filePath = "/pic/"+filename;
+			BasicFileAttributes attr = null;
+			try {attr = getMetaData(filename);}
 			catch(Exception e) {
-
 			}
-		     
-		}
 
+			return ResponseEntity.ok().body(header + 
+				"<image src="+filePath+" width=\" \" height=\" \">" +
+				"<p>creationTime: " + attr.creationTime() +"</p>" +
+				"<p>lastAccessTime: " + attr.lastAccessTime() +"</p>" +
+				"<p>lastModifiedTime: " + attr.lastModifiedTime() +"</p>" +
+				"<p>isDirectory: " + attr.isDirectory() +"</p>" +
+				"<p>isOther: " + attr.isOther() +"</p>" +
+				"<p>isRegularFile: " + attr.isRegularFile() +"</p>" +
+				"<p>isSymbolicLink: " + attr.isSymbolicLink() +"</p>" +
+				"<p>size: " + attr.size() +"</p>"
+			);} else {
+				BasicFileAttributes attr = null;
+				try {attr = getMetaData(filename);}
+				catch(Exception e) {
+				}
+				return ResponseEntity.ok().body(header + 
+				"<p>creationTime: " + attr.creationTime() +"</p>" +
+				"<p>lastAccessTime: " + attr.lastAccessTime() +"</p>" +
+				"<p>lastModifiedTime: " + attr.lastModifiedTime() +"</p>" +
+				"<p>isDirectory: " + attr.isDirectory() +"</p>" +
+				"<p>isOther: " + attr.isOther() +"</p>" +
+				"<p>isRegularFile: " + attr.isRegularFile() +"</p>" +
+				"<p>isSymbolicLink: " + attr.isSymbolicLink() +"</p>" +
+				"<p>size: " + attr.size() +"</p>"
+			);}
+    }
+
+    public BasicFileAttributes getMetaData(String filename) throws IOException{
+        Path file = Paths.get(System.getProperty("user.dir")+"/upload-dir/"+filename);
+        return Files.readAttributes(file, BasicFileAttributes.class);
+    }
+
+    @GetMapping("/pdf/{filename:.+}")
+    @ResponseBody
+    public ResponseEntity<?> servePdfFile(@PathVariable String filename) {
+
+    	Resource file = storageService.loadAsResource(filename);
+
+        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(file);
+			
+		return ResponseEntity.ok().contentType(mediaType.get()).body(file);
+
+    }
+
+    @GetMapping("/pic/{filename:.+}")
+    @ResponseBody
+    public ResponseEntity<?> servePicFile(@PathVariable String filename) {
+
+    	Resource file = storageService.loadAsResource(filename);
+
+        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(file);
+			
 		return ResponseEntity.ok().contentType(mediaType.get()).body(file);
 
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file/*,
-            RedirectAttributes redirectAttributes*/) {
+    public String handleFileUpload(@RequestParam("file") MultipartFile file) {
 
         storageService.store(file);
-
-        /*Resource resfile = storageService.loadAsResource(file.getOriginalFilename());
-
-        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(resfile);
-		
-		System.out.print("MEDIATYPE: "+mediaType.get());
-
-		if(mediaType.isPresent()) {
-
-		}*/
-	
-        /*redirectAttributes.addFlashAttribute("message",
-                "You successfully uploaded " + file.getOriginalFilename() + "!");*/
-
         return "redirect:/" + file.getOriginalFilename();
     }
 
